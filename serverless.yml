@@ -56,11 +56,3 @@ functions:
           path: sites
           method: get
           cors: true
-
-  world:
-    handler: functions/bin/world
-    events:
-      - http:
-          path: world
-          method: get
-          cors: true

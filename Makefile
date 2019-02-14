@@ -6,7 +6,6 @@ build:
 	env GOOS=linux go build -ldflags="-s -w" -o functions/bin/delete functions/delete/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o functions/bin/get functions/get/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o functions/bin/list functions/list/main.go
-	env GOOS=linux go build -ldflags="-s -w" -o functions/bin/world functions/world/main.go
 
 clean:
 	rm -rf .functions/bin ./vendor Gopkg.lock
