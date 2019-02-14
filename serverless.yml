@@ -1,0 +1,66 @@
+# For full config options, check the docs: docs.serverless.com
+service: go-lambda-dynamo # NOTE: update this with your service name
+
+# You can pin your service to only deploy with a specific Serverless version
+frameworkVersion: ">=1.28.0 <2.0.0"
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: us-east-1 # TODO: use var
+  profile: awsdschultz-serverless # TODO: use var
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:us-east-1:*:*" # TODO: use var
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./functions/bin/**
+
+functions:
+  create:
+    handler: functions/bin/create
+    events:
+      - http:
+          path: sites
+          method: post
+          cors: true
+  delete:
+    handler: functions/bin/delete
+    events:
+      - http:
+          path: sites/{id}
+          method: delete
+          cors: true
+  get:
+    handler: functions/bin/get
+    events:
+      - http:
+          path: sites/{id}
+          method: get
+          cors: true
+  list:
+    handler: functions/bin/list
+    events:
+      - http:
+          path: sites
+          method: get
+          cors: true
+
+  world:
+    handler: functions/bin/world
+    events:
+      - http:
+          path: world
+          method: get
+          cors: true
