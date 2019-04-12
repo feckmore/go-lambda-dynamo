@@ -33,28 +33,28 @@ package:
     - ./bin/**
 
 functions:
-  create:
+  CreateSite:
     handler: bin/sites/create
     events:
       - http:
           path: sites
           method: post
           cors: true
-  delete:
+  DeleteSite:
     handler: bin/sites/delete
     events:
       - http:
           path: sites/{id}
           method: delete
           cors: true
-  get:
+  GetSite:
     handler: bin/sites/get
     events:
       - http:
           path: sites/{id}
           method: get
           cors: true
-  list:
+  ListSites:
     handler: bin/sites/list
     events:
       - http:
