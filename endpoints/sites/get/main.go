@@ -81,6 +81,8 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 	id := aws.String(request.PathParameters["id"])
 	version := aws.String(request.QueryStringParameters["version"])
 
+	//TODO: look for path also for different query
+
 	key := map[string]*dynamodb.AttributeValue{
 		"id":      {S: id},
 		"version": {S: version},
@@ -105,6 +107,11 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 	if err != nil {
 		log.Println("Error marshalling site into json for response body")
 		return Response{StatusCode: http.StatusInternalServerError}, err
+	}
+
+	// make sure there's a valid site returned
+	if site.ID == "" {
+		return Response{StatusCode: http.StatusNotFound}, err
 	}
 
 	response := Response{
