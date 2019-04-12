@@ -7,8 +7,13 @@ frameworkVersion: ">=1.28.0 <2.0.0"
 provider:
   name: aws
   runtime: go1.x
-  region: us-east-1 # TODO: use var
-  profile: awsdschultz-serverless # TODO: use var
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  table: ${opt:table, 'go-lambda-dynamo'}
+  environment:
+    REGION: ${self:provider.region}
+    STAGE: ${self:provider.stage}
+    TABLE_NAME: ${self:provider.table}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -19,40 +24,43 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-      Resource: "arn:aws:dynamodb:us-east-1:*:*" # TODO: use var
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:*"
 
 package:
   exclude:
     - ./**
   include:
-    - ./functions/bin/**
+    - ./bin/**
 
 functions:
   create:
-    handler: functions/bin/create
+    handler: bin/create
     events:
       - http:
           path: sites
           method: post
           cors: true
   delete:
-    handler: functions/bin/delete
+    handler: bin/delete
     events:
       - http:
           path: sites/{id}
           method: delete
           cors: true
   get:
-    handler: functions/bin/get
+    handler: bin/get
     events:
       - http:
           path: sites/{id}
           method: get
           cors: true
   list:
-    handler: functions/bin/list
+    handler: bin/list
     events:
       - http:
           path: sites
           method: get
           cors: true
+
+resources:
+  - ${file(dynamodb.yml)}

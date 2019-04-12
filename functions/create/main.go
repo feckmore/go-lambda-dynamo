@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -17,53 +18,106 @@ import (
 	"github.com/google/uuid"
 )
 
-var db *dynamodb.DynamoDB
-
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
+type SiteStatus int
+
+const (
+	Unpublished SiteStatus = iota
+	Published
+)
+
+// Site defines the fields of the site model
+type Site struct {
+	ID           string     `json:"id"`
+	Version      string     `json:"version"`
+	Path         string     `json:"path"`
+	Type         string     `json:"type"`
+	Status       SiteStatus `json:"status,omitempty"`
+	Name         *string    `json:"name,omitempty"`
+	Description  *string    `json:"description,omitempty"`
+	Keywords     *string    `json:"keywords,omitempty"`
+	URL          *string    `json:"url,omitempty"`
+	TagManagerID *string    `json:"tagManagerId,omitempty"`
+	CardImageURL *string    `json:"cardImageUrl,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt,omitempty"`
+	UpdatedAt    time.Time  `json:"updatedAt,omitempty"`
+}
+
+var db *dynamodb.DynamoDB
+var region, stage, table, database string
+var currentTime time.Time
+
+func init() {
+	// Enable line numbers in log output, but remove date/time
+	log.SetFlags(log.Llongfile)
+
+	region = strings.TrimSpace(os.Getenv("AWS_REGION"))
+	stage = os.Getenv("STAGE")
+	table = os.Getenv("TABLE_NAME")
+	currentTime = time.Now()
+
+	log.Println("AWS_REGION:", region)
+	log.Println("STAGE:", stage)
+	log.Println("TABLE_NAME:", table)
+
+	// TODO: validate env vars
+}
+
+// main starts the session, news up the db & invokes lambda handler
+func main() {
+	session, err := session.NewSession(&aws.Config{Region: aws.String(region)})
+	if err != nil {
+		log.Println("Failed to connect to AWS:", err)
+	} else {
+		db = dynamodb.New(session)
+	}
+
+	lambda.Start(Handler)
+}
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
-func Handler(ctx context.Context, req Request) (Response, error) {
-	var reqBody interface{}
-	err := json.Unmarshal([]byte(req.Body), &reqBody) // TODO: extract http request transformation out
+func Handler(ctx context.Context, request Request) (Response, error) {
+	var site *Site
+	err := json.Unmarshal([]byte(request.Body), &site)
 	if err != nil {
-		return Response{StatusCode: 404}, err // TODO: decide what's the correct status
+		log.Println("Error unmarshalling request body into site")
+		return Response{StatusCode: http.StatusBadRequest}, err
 	}
 
-	item, err := dynamodbattribute.MarshalMap(reqBody)
-	if err != nil {
-		return Response{StatusCode: 404}, err // TODO: decide what's the correct status
-	}
-	id := uuid.New().String()
-	item["id"] = &dynamodb.AttributeValue{S: &id}
+	site.ID = uuid.New().String()
+	site.Version = uuid.New().String()
+	status := Unpublished
+	site.Status = status
+	site.CreatedAt = currentTime
+	site.UpdatedAt = currentTime
 
-	t := time.Now().Format(time.RFC3339)
-	item["createdAt"] = &dynamodb.AttributeValue{S: &t}
-	item["updatedAt"] = &dynamodb.AttributeValue{S: &t}
+	av, err := dynamodbattribute.MarshalMap(site)
+	if err != nil {
+		log.Println("Error marshalling site into dynamodb attribute")
+		return Response{StatusCode: http.StatusInternalServerError}, err
+	}
 
 	input := &dynamodb.PutItemInput{
-		Item:      item,
-		TableName: aws.String("todos"),
+		Item:      av,
+		TableName: aws.String(table),
 	}
+
 	_, err = db.PutItem(input)
 	if err != nil {
-		return Response{StatusCode: 404}, err // TODO: decide what's the correct status
+		log.Println("Error putting item into DyanmoDB")
+		return Response{StatusCode: http.StatusBadRequest}, err
 	}
 
-	var buf bytes.Buffer
-	var r interface{}
-	err = dynamodbattribute.UnmarshalMap(item, &r)
+	body, err := json.Marshal(site)
 	if err != nil {
-		return Response{StatusCode: 404}, err // TODO: decide what's the correct status
+		log.Println("Error marshalling site into json for response body")
+		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	respBody, _ := r.(string)
-	json.HTMLEscape(&buf, []byte(respBody))
-
-	resp := Response{
-		StatusCode:      200,
-		IsBase64Encoded: false,
-		Body:            req.Body, //buf.String(),
+	response := Response{
+		StatusCode: http.StatusOK,
+		Body:       string(body),
 		Headers: map[string]string{
 			"Content-Type":                     "application/json",
 			"Access-Control-Allow-Origin":      "*",
@@ -71,16 +125,5 @@ func Handler(ctx context.Context, req Request) (Response, error) {
 		},
 	}
 
-	return resp, nil
-}
-
-func main() {
-	session, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")}) // TODO: REMOVE HARD-CODED REGION string
-	if err != nil {
-		log.Println(fmt.Sprintf("Failed to connect to AWS: %s", err.Error()))
-	} else {
-		db = dynamodb.New(session)
-	}
-
-	lambda.Start(Handler)
+	return response, nil
 }
