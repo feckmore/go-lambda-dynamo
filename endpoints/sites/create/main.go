@@ -45,7 +45,7 @@ type Site struct {
 }
 
 var db *dynamodb.DynamoDB
-var region, stage, table, database string
+var region, stage, table string
 var currentTime time.Time
 
 func init() {

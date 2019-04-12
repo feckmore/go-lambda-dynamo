@@ -2,20 +2,21 @@
 
 
 [[projects]]
-  digest = "1:4775daf89638182e60b52ca32dacecb030aff6f9dcecb28af389f6e8aa807ac7"
+  digest = "1:c7d6e6564219e2beb7dbb2336ca1fb0e5e7730449958bd4a1f63591ac87fbd36"
   name = "github.com/aws/aws-lambda-go"
   packages = [
     "events",
     "lambda",
+    "lambda/handlertrace",
     "lambda/messages",
     "lambdacontext",
   ]
   pruneopts = ""
-  revision = "527f5d301d2993af078be6d0b63372786b3fc18f"
-  version = "v1.8.2"
+  revision = "08d251dc58f204411d79012fd6f1beefb7107fea"
+  version = "v1.10.0"
 
 [[projects]]
-  digest = "1:286aa86fc22d2335eeae697277340d021937bef97f8f9850aff1be9cbcf84700"
+  digest = "1:e1fc4e86ce21dca811fb1a59438f55e442cfcbdfc3346637ad87a448dca6a657"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -51,19 +52,20 @@
     "private/protocol/xml/xmlutil",
     "service/dynamodb",
     "service/dynamodb/dynamodbattribute",
+    "service/dynamodb/expression",
     "service/sts",
   ]
   pruneopts = ""
-  revision = "25f89dc67cc7eddac939028c7128499dcfcab46b"
-  version = "v1.16.33"
+  revision = "56c1def75689cceec1fa6f14c2eedb4b798827f9"
+  version = "v1.19.11"
 
 [[projects]]
-  digest = "1:a25a2c5ae694b01713fb6cd03c3b1ac1ccc1902b9f0a922680a88ec254f968e1"
+  digest = "1:ad92aa49f34cbc3546063c7eb2cabb55ee2278b72842eda80e2a20a8a06a8d73"
   name = "github.com/google/uuid"
   packages = ["."]
   pruneopts = ""
-  revision = "9b3b1e0f5f99ae461456d768e7d301a7acdaa2d8"
-  version = "v1.1.0"
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:13fe471d0ed891e8544eddfeeb0471fd3c9f2015609a1c000aefdedf52a19d40"
@@ -82,6 +84,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/dynamodb",
     "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute",
+    "github.com/aws/aws-sdk-go/service/dynamodb/expression",
     "github.com/google/uuid",
   ]
   solver-name = "gps-cdcl"
