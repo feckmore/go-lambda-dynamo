@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -15,8 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/google/uuid"
 )
 
 type Response events.APIGatewayProxyResponse
@@ -56,7 +51,6 @@ func init() {
 	region = strings.TrimSpace(os.Getenv("AWS_REGION"))
 	stage = os.Getenv("STAGE")
 	table = os.Getenv("TABLE_NAME")
-	currentTime = time.Now()
 
 	log.Println("AWS_REGION:", region)
 	log.Println("STAGE:", stage)
@@ -79,55 +73,32 @@ func main() {
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, request Request) (Response, error) {
-	var site *Site
-	err := json.Unmarshal([]byte(request.Body), &site)
-	if err != nil {
-		log.Println("Error unmarshalling request body into site")
-		return Response{StatusCode: http.StatusBadRequest}, err
+	// siteid := aws.String(request.PathParameters["siteid"])
+	pageid := aws.String(request.PathParameters["pageid"])
+	version := aws.String(request.QueryStringParameters["version"])
+
+	// TODO: also option to delete all versions?
+
+	key := map[string]*dynamodb.AttributeValue{
+		"id":      {S: pageid},
+		"version": {S: version},
 	}
 
-	if strings.TrimSpace(site.Path) == "" {
-		log.Println("Can't create site without path")
-		return Response{StatusCode: http.StatusBadRequest}, errors.New("Can't create site without path")
-	}
+	log.Println(key)
 
-	site.ID = uuid.New().String()
-	site.Version = uuid.New().String()
-	site.Type = "site"
-	site.Path = strings.ToLower(site.Path)
-	status := Unpublished
-	site.Status = status
-	site.CreatedAt = currentTime
-	site.UpdatedAt = currentTime
-
-	av, err := dynamodbattribute.MarshalMap(site)
-	if err != nil {
-		log.Println("Error marshalling site into dynamodb attribute")
-		return Response{StatusCode: http.StatusInternalServerError}, err
-	}
-
-	input := &dynamodb.PutItemInput{
-		Item:      av,
+	_, err := db.DeleteItem(&dynamodb.DeleteItemInput{
+		Key:       key,
 		TableName: aws.String(table),
+	})
+	if err != nil {
+		return Response{StatusCode: 500}, err // TODO: decide what's the correct status
 	}
 
-	_, err = db.PutItem(input)
-	if err != nil {
-		log.Println("Error putting item into DyanmoDB")
-		return Response{StatusCode: http.StatusBadRequest}, err
-	}
-
-	body, err := json.Marshal(site)
-	if err != nil {
-		log.Println("Error marshalling site into json for response body")
-		return Response{StatusCode: http.StatusInternalServerError}, err
-	}
+	// TODO: consider returning body with status
 
 	response := Response{
-		StatusCode: http.StatusOK,
-		Body:       string(body),
+		StatusCode: 200,
 		Headers: map[string]string{
-			"Content-Type":                     "application/json",
 			"Access-Control-Allow-Origin":      "*",
 			"Access-Control-Allow-Credentials": "true",
 		},

@@ -44,14 +44,14 @@ functions:
     handler: bin/sites/delete
     events:
       - http:
-          path: sites/{id}
+          path: sites/{siteid}
           method: delete
           cors: true
   GetSite:
     handler: bin/sites/get
     events:
       - http:
-          path: sites/{id}
+          path: sites/{siteid}
           method: get
           cors: true
   ListSites:
@@ -59,6 +59,34 @@ functions:
     events:
       - http:
           path: sites
+          method: get
+          cors: true
+  CreatePage:
+    handler: bin/pages/create
+    events:
+      - http:
+          path: sites/{siteid}/pages
+          method: post
+          cors: true
+  DeletePage:
+    handler: bin/pages/delete
+    events:
+      - http:
+          path: sites/{siteid}/pages/{pageid}
+          method: delete
+          cors: true
+  GetPage:
+    handler: bin/pages/get
+    events:
+      - http:
+          path: sites/{siteid}/pages/{pageid}
+          method: get
+          cors: true
+  ListPages:
+    handler: bin/pages/list
+    events:
+      - http:
+          path: sites/{siteid}/pages
           method: get
           cors: true
 

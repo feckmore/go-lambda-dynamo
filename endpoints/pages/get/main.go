@@ -15,33 +15,23 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 )
 
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
-type SiteStatus int
 
-const (
-	Unpublished SiteStatus = iota
-	Published
-)
-
-// Site defines the fields of the site model
-type Site struct {
-	ID           string     `json:"id"`
-	Version      string     `json:"version"`
-	Path         string     `json:"path"`
-	Type         string     `json:"type"`
-	Status       SiteStatus `json:"status,omitempty"`
-	Name         *string    `json:"name,omitempty"`
-	Description  *string    `json:"description,omitempty"`
-	Keywords     *string    `json:"keywords,omitempty"`
-	URL          *string    `json:"url,omitempty"`
-	TagManagerID *string    `json:"tagManagerId,omitempty"`
-	CardImageURL *string    `json:"cardImageUrl,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt,omitempty"`
-	UpdatedAt    time.Time  `json:"updatedAt,omitempty"`
+// Page defines the fields of the page model
+type Page struct {
+	ID          string    `json:"id"`
+	Version     string    `json:"version"`
+	Path        string    `json:"path"`
+	Type        string    `json:"type"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Keywords    *string   `json:"keywords,omitempty"`
+	Author      *string   `json:"author,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
 var db *dynamodb.DynamoDB
@@ -77,39 +67,44 @@ func main() {
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, request Request) (Response, error) {
-	var sites []Site
+	var page Page
 
-	key := expression.Key("type").Equal(expression.Value("site"))
-	builder := expression.NewBuilder().WithKeyCondition(key)
-	expr, err := builder.Build()
+	// siteid := aws.String(request.PathParameters["siteid"])
+	pageid := aws.String(request.PathParameters["pageid"])
+	version := aws.String(request.QueryStringParameters["version"])
+
+	//TODO: look for path also for different query
+
+	key := map[string]*dynamodb.AttributeValue{
+		"id":      {S: pageid},
+		"version": {S: version},
+	}
+
+	result, err := db.GetItem(&dynamodb.GetItemInput{
+		Key:       key,
+		TableName: aws.String(table),
+	})
 	if err != nil {
-		log.Println("Error building dynamodb expression")
+		log.Println("Error getting page from dynamodb")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	queryInput := dynamodb.QueryInput{
-		KeyConditionExpression:    expr.KeyCondition(),
-		ExpressionAttributeNames:  expr.Names(),
-		ExpressionAttributeValues: expr.Values(),
-		IndexName:                 aws.String("type-path-index"),
-		TableName:                 aws.String(table),
-	}
-	results, err := db.Query(&queryInput)
+	err = dynamodbattribute.UnmarshalMap(result.Item, &page)
 	if err != nil {
-		log.Println("Error querying sites in dynamodb")
+		log.Println("Error unmarshalling into page")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	err = dynamodbattribute.UnmarshalListOfMaps(results.Items, &sites)
+	body, err := json.Marshal(page)
 	if err != nil {
-		log.Println("Error unmarshalling into sites slice")
+		log.Println("Error marshalling page into json for response body")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	body, err := json.Marshal(sites)
-	if err != nil {
-		log.Println("Error marshalling sites into json for response body")
-		return Response{StatusCode: http.StatusInternalServerError}, err
+	// make sure there's a valid page returned
+	if page.ID == "" {
+		// TODO: consider returning body with status
+		return Response{StatusCode: http.StatusNotFound}, err
 	}
 
 	response := Response{

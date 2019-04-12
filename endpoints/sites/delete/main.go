@@ -73,7 +73,7 @@ func main() {
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, request Request) (Response, error) {
-	id := aws.String(request.PathParameters["id"])
+	id := aws.String(request.PathParameters["siteid"])
 	version := aws.String(request.QueryStringParameters["version"])
 
 	// TODO: also option to delete all versions?
@@ -90,6 +90,8 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 	if err != nil {
 		return Response{StatusCode: 500}, err // TODO: decide what's the correct status
 	}
+
+	// TODO: consider returning body with status
 
 	response := Response{
 		StatusCode: 200,

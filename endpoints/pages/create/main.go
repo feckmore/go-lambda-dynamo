@@ -21,28 +21,19 @@ import (
 
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
-type SiteStatus int
 
-const (
-	Unpublished SiteStatus = iota
-	Published
-)
-
-// Site defines the fields of the site model
-type Site struct {
-	ID           string     `json:"id"`
-	Version      string     `json:"version"`
-	Path         string     `json:"path"`
-	Type         string     `json:"type"`
-	Status       SiteStatus `json:"status,omitempty"`
-	Name         *string    `json:"name,omitempty"`
-	Description  *string    `json:"description,omitempty"`
-	Keywords     *string    `json:"keywords,omitempty"`
-	URL          *string    `json:"url,omitempty"`
-	TagManagerID *string    `json:"tagManagerId,omitempty"`
-	CardImageURL *string    `json:"cardImageUrl,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt,omitempty"`
-	UpdatedAt    time.Time  `json:"updatedAt,omitempty"`
+// Page defines the fields of the page model
+type Page struct {
+	ID          string    `json:"id"`
+	Version     string    `json:"version"`
+	Path        string    `json:"path"`
+	Type        string    `json:"type"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Keywords    *string   `json:"keywords,omitempty"`
+	Author      *string   `json:"author,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
 var db *dynamodb.DynamoDB
@@ -79,30 +70,31 @@ func main() {
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, request Request) (Response, error) {
-	var site *Site
-	err := json.Unmarshal([]byte(request.Body), &site)
+	// TODO: what to do with the site id?
+	// siteid := request.PathParameters["siteid"]
+
+	var page *Page
+	err := json.Unmarshal([]byte(request.Body), &page)
 	if err != nil {
-		log.Println("Error unmarshalling request body into site")
+		log.Println("Error unmarshalling request body into page")
 		return Response{StatusCode: http.StatusBadRequest}, err
 	}
-
-	if strings.TrimSpace(site.Path) == "" {
-		log.Println("Can't create site without path")
-		return Response{StatusCode: http.StatusBadRequest}, errors.New("Can't create site without path")
+	log.Println(page)
+	if strings.TrimSpace(page.Path) == "" {
+		log.Println("Can't create page without path")
+		return Response{StatusCode: http.StatusBadRequest}, errors.New("Can't create page without path")
 	}
 
-	site.ID = uuid.New().String()
-	site.Version = uuid.New().String()
-	site.Type = "site"
-	site.Path = strings.ToLower(site.Path)
-	status := Unpublished
-	site.Status = status
-	site.CreatedAt = currentTime
-	site.UpdatedAt = currentTime
+	page.ID = uuid.New().String()
+	page.Version = uuid.New().String()
+	page.Path = strings.ToLower(page.Path)
+	page.Type = "page"
+	page.CreatedAt = currentTime
+	page.UpdatedAt = currentTime
 
-	av, err := dynamodbattribute.MarshalMap(site)
+	av, err := dynamodbattribute.MarshalMap(page)
 	if err != nil {
-		log.Println("Error marshalling site into dynamodb attribute")
+		log.Println("Error marshalling page into dynamodb attribute")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
@@ -117,9 +109,9 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 		return Response{StatusCode: http.StatusBadRequest}, err
 	}
 
-	body, err := json.Marshal(site)
+	body, err := json.Marshal(page)
 	if err != nil {
-		log.Println("Error marshalling site into json for response body")
+		log.Println("Error marshalling page into json for response body")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 

@@ -78,7 +78,7 @@ func main() {
 func Handler(ctx context.Context, request Request) (Response, error) {
 	var site Site
 
-	id := aws.String(request.PathParameters["id"])
+	id := aws.String(request.PathParameters["siteid"])
 	version := aws.String(request.QueryStringParameters["version"])
 
 	//TODO: look for path also for different query
@@ -93,7 +93,7 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 		TableName: aws.String(table),
 	})
 	if err != nil {
-		log.Println("Error getting item from dynamodb")
+		log.Println("Error getting site from dynamodb")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
@@ -111,6 +111,7 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 
 	// make sure there's a valid site returned
 	if site.ID == "" {
+		// TODO: consider returning body with status
 		return Response{StatusCode: http.StatusNotFound}, err
 	}
 

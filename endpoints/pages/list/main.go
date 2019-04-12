@@ -20,28 +20,19 @@ import (
 
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
-type SiteStatus int
 
-const (
-	Unpublished SiteStatus = iota
-	Published
-)
-
-// Site defines the fields of the site model
-type Site struct {
-	ID           string     `json:"id"`
-	Version      string     `json:"version"`
-	Path         string     `json:"path"`
-	Type         string     `json:"type"`
-	Status       SiteStatus `json:"status,omitempty"`
-	Name         *string    `json:"name,omitempty"`
-	Description  *string    `json:"description,omitempty"`
-	Keywords     *string    `json:"keywords,omitempty"`
-	URL          *string    `json:"url,omitempty"`
-	TagManagerID *string    `json:"tagManagerId,omitempty"`
-	CardImageURL *string    `json:"cardImageUrl,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt,omitempty"`
-	UpdatedAt    time.Time  `json:"updatedAt,omitempty"`
+// Page defines the fields of the page model
+type Page struct {
+	ID          string    `json:"id"`
+	Version     string    `json:"version"`
+	Path        string    `json:"path"`
+	Type        string    `json:"type,omitempty"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Keywords    *string   `json:"keywords,omitempty"`
+	Author      *string   `json:"author,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
 var db *dynamodb.DynamoDB
@@ -77,10 +68,19 @@ func main() {
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, request Request) (Response, error) {
-	var sites []Site
+	sitePath := request.PathParameters["siteid"]
+	// TODO: validate site path
 
-	key := expression.Key("type").Equal(expression.Value("site"))
-	builder := expression.NewBuilder().WithKeyCondition(key)
+	var pages []Page
+
+	// define key condition for sort to begin with
+	sortCondition := expression.Key("path").BeginsWith(sitePath)
+	// "And" the sort key with partition key
+	key := expression.Key("type").Equal(expression.Value("page")).And(sortCondition)
+	// projection represents the list of attribute names
+	projection := expression.NamesList(expression.Name("id"), expression.Name("version"), expression.Name("path"), expression.Name("createdAt"), expression.Name("updatedAt"), expression.Name("name"))
+
+	builder := expression.NewBuilder().WithKeyCondition(key).WithProjection(projection)
 	expr, err := builder.Build()
 	if err != nil {
 		log.Println("Error building dynamodb expression")
@@ -89,26 +89,28 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 
 	queryInput := dynamodb.QueryInput{
 		KeyConditionExpression:    expr.KeyCondition(),
+		ProjectionExpression:      expr.Projection(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 		IndexName:                 aws.String("type-path-index"),
 		TableName:                 aws.String(table),
 	}
+
 	results, err := db.Query(&queryInput)
 	if err != nil {
-		log.Println("Error querying sites in dynamodb")
+		log.Println("Error querying pages in dynamodb")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	err = dynamodbattribute.UnmarshalListOfMaps(results.Items, &sites)
+	err = dynamodbattribute.UnmarshalListOfMaps(results.Items, &pages)
 	if err != nil {
-		log.Println("Error unmarshalling into sites slice")
+		log.Println("Error unmarshalling into pages slice")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	body, err := json.Marshal(sites)
+	body, err := json.Marshal(pages)
 	if err != nil {
-		log.Println("Error marshalling sites into json for response body")
+		log.Println("Error marshalling pages into json for response body")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
