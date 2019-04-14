@@ -47,7 +47,6 @@ type Site struct {
 
 var db *dynamodb.DynamoDB
 var region, stage, table string
-var currentTime time.Time
 
 func init() {
 	// Enable line numbers in log output, but remove date/time
@@ -56,11 +55,6 @@ func init() {
 	region = strings.TrimSpace(os.Getenv("AWS_REGION"))
 	stage = os.Getenv("STAGE")
 	table = os.Getenv("TABLE_NAME")
-	currentTime = time.Now()
-
-	log.Println("AWS_REGION:", region)
-	log.Println("STAGE:", stage)
-	log.Println("TABLE_NAME:", table)
 
 	// TODO: validate env vars
 }
@@ -81,7 +75,7 @@ func main() {
 func Handler(ctx context.Context, request Request) (Response, error) {
 	var site *Site
 	err := json.Unmarshal([]byte(request.Body), &site)
-	if err != nil {
+	if site == nil || err != nil {
 		log.Println("Error unmarshalling request body into site")
 		return Response{StatusCode: http.StatusBadRequest}, err
 	}
@@ -90,7 +84,12 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 		log.Println("Can't create site without path")
 		return Response{StatusCode: http.StatusBadRequest}, errors.New("Can't create site without path")
 	}
+	if site.Name == nil || strings.TrimSpace(*site.Name) == "" {
+		log.Println("Can't create site without name")
+		return Response{StatusCode: http.StatusBadRequest}, errors.New("Can't create site without name")
+	}
 
+	currentTime := time.Now()
 	site.ID = uuid.New().String()
 	site.Version = uuid.New().String()
 	site.Type = "site"
