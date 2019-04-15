@@ -12,6 +12,7 @@ build:
 	env GOOS=linux go build -ldflags="-s -w" -o bin/pages/delete endpoints/pages/delete/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/pages/get endpoints/pages/get/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/pages/list endpoints/pages/list/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/pages/update endpoints/pages/update/main.go
 
 clean:
 	rm -rf ./bin ./vendor Gopkg.lock

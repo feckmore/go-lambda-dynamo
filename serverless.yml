@@ -96,6 +96,13 @@ functions:
           path: sites/{siteid}/pages
           method: get
           cors: true
+  UpdatePage:
+    handler: bin/pages/update
+    events:
+      - http:
+          path: sites/{siteid}/pages/{pageid}
+          method: patch
+          cors: true
 
 resources:
   - ${file(dynamodb.yml)}

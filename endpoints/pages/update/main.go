@@ -19,28 +19,19 @@ import (
 
 type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
-type SiteStatus int
 
-const (
-	Unpublished SiteStatus = iota
-	Published
-)
-
-// Site defines the fields of the site model
-type Site struct {
-	ID           string     `json:"id"`
-	Version      string     `json:"version"`
-	Path         string     `json:"path"`
-	Type         string     `json:"type"`
-	Status       SiteStatus `json:"status,omitempty"`
-	Name         *string    `json:"name,omitempty"`
-	Description  *string    `json:"description,omitempty"`
-	Keywords     *string    `json:"keywords,omitempty"`
-	URL          *string    `json:"url,omitempty"`
-	TagManagerID *string    `json:"tagManagerId,omitempty"`
-	CardImageURL *string    `json:"cardImageUrl,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt,omitempty"`
-	UpdatedAt    time.Time  `json:"updatedAt,omitempty"`
+// Page defines the fields of the page model
+type Page struct {
+	ID          string    `json:"id"`
+	Version     string    `json:"version"`
+	Path        string    `json:"path"`
+	Type        string    `json:"type"`
+	Name        *string   `json:"name,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Keywords    *string   `json:"keywords,omitempty"`
+	Author      *string   `json:"author,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
 var db *dynamodb.DynamoDB
@@ -76,19 +67,15 @@ func main() {
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, request Request) (Response, error) {
-	// TODO: if we pulled the Get Site & Create Site out from the handler, just passing in the Site object,
-	// we could call Get Site, then merge with body & call Create/Put Site functions.
-	// Keeping all of the code in-line for now
-
-	// Get existing site from datbase
-	var original Site
-	id := aws.String(request.PathParameters["siteid"])
+	// Get existing page from datbase
+	var original Page
+	pageid := aws.String(request.PathParameters["pageid"])
 	version := aws.String(request.QueryStringParameters["version"]) //TODO: get latest version, or latest for changeset
 
 	//TODO: look for path also for different query
 
 	key := map[string]*dynamodb.AttributeValue{
-		"id":      {S: id},
+		"id":      {S: pageid},
 		"version": {S: version},
 	}
 
@@ -97,48 +84,48 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 		TableName: aws.String(table),
 	})
 	if err != nil {
-		log.Println("Error getting site from dynamodb")
+		log.Println("Error getting page from dynamodb")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	err = dynamodbattribute.UnmarshalMap(result.Item, &original)
 	if err != nil {
-		log.Println("Error unmarshalling into site")
+		log.Println("Error unmarshalling into page")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	// make sure there's a valid site returned
+	// make sure there's a valid page returned from the database
 	if original.ID == "" {
-		log.Println("No site returned from database query")
+		log.Println("No page returned from database query")
 		return Response{StatusCode: http.StatusNotFound}, err
 	}
 
-	// Get site changes from request body
-	var changes Site
+	// Get page changes from request body
+	var changes Page
 	err = json.Unmarshal([]byte(request.Body), &changes)
 	if err != nil {
-		log.Println("Error unmarshalling request body into site")
+		log.Println("Error unmarshalling request body into page")
 		return Response{StatusCode: http.StatusBadRequest}, err
 	}
 
-	// combine original site with requested changes
+	// combine original page with requested changes
 	changes.ID = original.ID
 	changes.Version = original.Version //TODO: new version
-	changes.Type = "site"
+	changes.Type = "page"
 	if len(changes.Path) == 0 {
 		changes.Path = original.Path
 	}
 	changes.CreatedAt = original.CreatedAt
 	changes.UpdatedAt = time.Now()
-	updated, err := mergeSites(&original, &changes)
+	updated, err := mergePages(&original, &changes)
 	if err != nil {
-		log.Println("Error merging site attributes")
+		log.Println("Error merging page attributes")
 		return Response{StatusCode: http.StatusBadRequest}, err
 	}
 
 	av, err := dynamodbattribute.MarshalMap(updated)
 	if err != nil {
-		log.Println("Error marshalling site into dynamodb attribute")
+		log.Println("Error marshalling page into dynamodb attribute")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
@@ -155,7 +142,7 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 
 	body, err := json.Marshal(updated)
 	if err != nil {
-		log.Println("Error marshalling site into json for response body")
+		log.Println("Error marshalling page into json for response body")
 		return Response{StatusCode: http.StatusInternalServerError}, err
 	}
 
@@ -173,16 +160,16 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 
 }
 
-// mergeSites merges two structs by serializing the struct with the changes to JSON, then
+// mergePages merges two structs by serializing the struct with the changes to JSON, then
 // deserializes the changes into the original
-func mergeSites(original, changes *Site) (*Site, error) {
+func mergePages(original, changes *Page) (*Page, error) {
 	// serialize changes to JSON
 	changeJSON, err := json.Marshal(changes)
 	if err != nil {
 		return nil, err
 	}
 
-	// deserialize the "changes" site struct into the original
+	// deserialize the "changes" page struct into the original
 	err = json.Unmarshal(changeJSON, &original)
 	if err != nil {
 		return nil, err
