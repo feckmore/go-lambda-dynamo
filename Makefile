@@ -6,6 +6,7 @@ build:
 	env GOOS=linux go build -ldflags="-s -w" -o bin/sites/delete endpoints/sites/delete/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/sites/get endpoints/sites/get/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/sites/list endpoints/sites/list/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/sites/update endpoints/sites/update/main.go
 
 	env GOOS=linux go build -ldflags="-s -w" -o bin/pages/create endpoints/pages/create/main.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/pages/delete endpoints/pages/delete/main.go

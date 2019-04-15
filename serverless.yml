@@ -61,6 +61,13 @@ functions:
           path: sites
           method: get
           cors: true
+  UpdateSite:
+    handler: bin/sites/update
+    events:
+      - http:
+          path: sites/{siteid}
+          method: patch
+          cors: true
   CreatePage:
     handler: bin/pages/create
     events:
